@@ -1,20 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
-import { parseEther, formatEther } from "viem"
+import { useEffect, useState } from "react"
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi"
 import { contractABI, contractAddress } from "@/lib/contract"
 
-export interface WillData {
-  recipient: string
-  amount: string
-  claimed: boolean
-}
-
 export interface ContractData {
-  contractBalance: string
-  myWillsCount: number
-  wills: WillData[]
+  currentColor: string
 }
 
 export interface ContractState {
@@ -27,76 +18,47 @@ export interface ContractState {
 }
 
 export interface ContractActions {
-  createWill: (recipient: string, amount: string) => Promise<void>
-  claimWill: (owner: string, index: number) => Promise<void>
+  setColor: (newColor: string) => Promise<void>
 }
 
-export const useWillContract = () => {
-  const { address } = useAccount()
+export const useColorContract = () => {
   const [isLoading, setIsLoading] = useState(false)
-  const [wills, setWills] = useState<WillData[]>([])
 
-  const { data: contractBalance, refetch: refetchBalance } = useReadContract({
+  const { data: color, refetch: refetchColor } = useReadContract({
     address: contractAddress,
     abi: contractABI,
-    functionName: "getContractBalance",
-  })
-
-  const { data: myWillsCount, refetch: refetchWillsCount } = useReadContract({
-    address: contractAddress,
-    abi: contractABI,
-    functionName: "getMyWillsCount",
-    query: {
-      enabled: !!address,
-    },
+    functionName: "getColor",
   })
 
   const { writeContractAsync, data: hash, error, isPending } = useWriteContract()
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+  } = useWaitForTransactionReceipt({
     hash,
   })
 
   useEffect(() => {
     if (isConfirmed) {
-      refetchBalance()
-      refetchWillsCount()
+      refetchColor()
     }
-  }, [isConfirmed, refetchBalance, refetchWillsCount])
+  }, [isConfirmed, refetchColor])
 
-  const createWill = async (recipient: string, amount: string) => {
-    if (!recipient || !amount) return
+  const setColor = async (newColor: string) => {
+    const trimmed = newColor.trim()
+    if (!trimmed) return
 
     try {
       setIsLoading(true)
       await writeContractAsync({
         address: contractAddress,
         abi: contractABI,
-        functionName: "createWill",
-        args: [recipient as `0x${string}`],
-        value: parseEther(amount),
+        functionName: "setColor",
+        args: [trimmed],
       })
     } catch (err) {
-      console.error("Error creating will:", err)
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const claimWill = async (owner: string, index: number) => {
-    if (!owner && !address) return
-
-    try {
-      setIsLoading(true)
-      await writeContractAsync({
-        address: contractAddress,
-        abi: contractABI,
-        functionName: "claimWill",
-        args: [(owner || address) as `0x${string}` , BigInt(index)],
-      })
-    } catch (err) {
-      console.error("Error claiming will:", err)
+      console.error("Error setting color:", err)
       throw err
     } finally {
       setIsLoading(false)
@@ -104,14 +66,11 @@ export const useWillContract = () => {
   }
 
   const data: ContractData = {
-    contractBalance: contractBalance ? formatEther(contractBalance as bigint) : "0",
-    myWillsCount: myWillsCount ? Number(myWillsCount as bigint) : 0,
-    wills,
+    currentColor: (color as string | undefined) ?? "",
   }
 
   const actions: ContractActions = {
-    createWill,
-    claimWill,
+    setColor,
   }
 
   const state: ContractState = {
@@ -120,7 +79,7 @@ export const useWillContract = () => {
     isConfirming,
     isConfirmed,
     hash,
-    error,
+    error: (error as Error | null) ?? null,
   }
 
   return {
