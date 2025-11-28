@@ -4,6 +4,7 @@
 
 - `0xd659553678bFbBB76a23e68176caD74039de47DF`  
 - Explorer: https://coston2-explorer.flare.network/address/0xd659553678bFbBB76a23e68176caD74039de47DF
+<img width="1919" height="957" alt="image" src="https://github.com/user-attachments/assets/703731c2-3a14-4205-9e2d-e4d1cd55cc7a" />
 
 ## Description
 
